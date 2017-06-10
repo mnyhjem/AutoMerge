@@ -17,17 +17,18 @@ namespace AutoMerge
             _changesetService = new Lazy<ChangesetService>(InitChangesetService);
         }
 
-        public Task<List<ChangesetViewModel>> GetChangesets(string userLogin)
+        public Task<List<ChangesetViewModel>> GetChangesets(string source, string target)
         {
-            return Task.Run(() => GetChangesetsInternal(userLogin));
+            return Task.Run(() => GetChangesetsInternal(source, target));
         }
 
-        protected abstract List<ChangesetViewModel> GetChangesetsInternal(string userLogin);
+        protected abstract List<ChangesetViewModel> GetChangesetsInternal(string source, string target);
 
         protected ChangesetViewModel ToChangesetViewModel(Changeset tfsChangeset, ChangesetService changesetService)
         {
             var changesetViewModel = new ChangesetViewModel
             {
+                CommitterDisplayName = tfsChangeset.OwnerDisplayName,
                 ChangesetId = tfsChangeset.ChangesetId,
                 Comment = tfsChangeset.Comment,
                 Branches = changesetService.GetAssociatedBranches(tfsChangeset.ChangesetId)

@@ -14,19 +14,20 @@ namespace AutoMerge
 		    _maxChangesetCount = maxChangesetCount;
 		}
 
-	    protected override List<ChangesetViewModel> GetChangesetsInternal(string userLogin)
+	    protected override List<ChangesetViewModel> GetChangesetsInternal(string source, string target)
 		{
 			var changesets = new List<ChangesetViewModel>();
 
-			if (!string.IsNullOrEmpty(userLogin))
+			if (!string.IsNullOrEmpty(source) && !string.IsNullOrEmpty(target))
 			{
 				var changesetService = GetChangesetService();
 
 				if (changesetService != null)
 				{
-				    var projectName = GetProjectName();
-					var tfsChangesets = changesetService.GetUserChangesets(projectName, userLogin, _maxChangesetCount);
-					changesets = tfsChangesets
+				    //var projectName = GetProjectName();
+                    //var tfsChangesets = changesetService.GetUserChangesets(projectName, userLogin, _maxChangesetCount);
+				    var tfsChangesets = changesetService.GetUserChangesets(source, target);
+                    changesets = tfsChangesets
 						.Select(tfsChangeset => ToChangesetViewModel(tfsChangeset, changesetService))
 						.ToList();
 				}

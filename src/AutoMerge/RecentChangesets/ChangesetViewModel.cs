@@ -14,5 +14,7 @@ namespace AutoMerge
 		{
 			get { return BranchHelper.GetDisplayBranchName(Branches); }
 		}
+
+	    public string CommitterDisplayName { get; set; }
 	}
 }

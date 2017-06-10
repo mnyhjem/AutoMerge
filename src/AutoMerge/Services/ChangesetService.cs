@@ -13,21 +13,30 @@ namespace AutoMerge
 			_versionControlServer = versionControlServer;
 		}
 
-		public ICollection<Changeset> GetUserChangesets(string teamProjectName, string userName, int count)
+		public ICollection<Changeset> GetUserChangesets(string source, string target)
 		{
-			var path = "$/" + teamProjectName;
-			return _versionControlServer.QueryHistory(path,
-				VersionSpec.Latest,
-				0,
-				RecursionType.Full,
-				userName,
-				null,
-				null,
-				count,
-				false,
-				true)
-				.Cast<Changeset>()
-				.ToList();
+		 //   userName = "";// ignorer navne...
+
+			//var path = "$/" + teamProjectName;
+		    
+
+            var list = _versionControlServer.GetMergeCandidates(source, target, RecursionType.Full);
+		    var mergeCandidates = list.Select(a => a.Changeset).ToList();
+
+		    return mergeCandidates;
+
+    //        return _versionControlServer.QueryHistory(path,
+				//VersionSpec.Latest,
+				//0,
+				//RecursionType.Full,
+				//userName,
+				//null,
+				//null,
+				//count,
+				//false,
+				//true)
+				//.Cast<Changeset>()
+				//.ToList();
 		}
 
 		public Changeset GetChangeset(int changesetId)
