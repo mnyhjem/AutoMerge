@@ -388,6 +388,12 @@ namespace AutoMerge
                 }
             }
 
+            var firstValidBranch = result.FirstOrDefault(a => !a.IsSourceBranch && a.ValidationResult == BranchValidationResult.Success);
+            if (firstValidBranch != null)
+            {
+                firstValidBranch.Checked = true;
+            }
+
             return result;
         }
 

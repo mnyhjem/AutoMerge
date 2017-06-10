@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.TeamFoundation.VersionControl.Client;
 
 namespace AutoMerge
 {
@@ -35,5 +36,32 @@ namespace AutoMerge
 
 			return changesets;
 		}
-	}
+
+	    public List<BranchObject> GetPossibliBranches()
+	    {
+	        var vcs = GetVersionControlServer();
+            
+            List<BranchObject> possibleBranches = new List<BranchObject>();
+
+	        BranchObject[] branches = vcs.QueryRootBranchObjects(RecursionType.None);
+
+	        foreach (var rootBranch in branches)
+	        {
+	            possibleBranches.AddRange(GetAllBranches(rootBranch, true, RecursionType.Full));
+	        }
+
+	        return possibleBranches;
+	    }
+
+	    public IEnumerable<BranchObject> GetAllBranches(BranchObject bo, bool includeSelf, RecursionType recursionType)
+	    {
+	        var vcs = GetVersionControlServer();
+
+            BranchObject[] branches = vcs.QueryBranchObjects(bo.Properties.RootItem, recursionType);
+	        return branches.Where(b =>
+	            !b.Properties.RootItem.IsDeleted
+	            && (includeSelf || !b.Properties.RootItem.Equals(bo.Properties.RootItem))
+	            && (b.ChildBranches.Length > 0 || b.Properties.ParentBranch != null));
+	    }
+    }
 }

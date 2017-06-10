@@ -58,6 +58,17 @@ namespace AutoMerge
             return null;
         }
 
+        protected VersionControlServer GetVersionControlServer()
+        {
+            var context = VersionControlNavigationHelper.GetTeamFoundationContext(_serviceProvider);
+            if (context == null || VersionControlNavigationHelper.IsConnectedToTfsCollectionAndProject(context) == false)
+            {
+                return null;
+            }
+            var vcs = context.TeamProjectCollection.GetService<VersionControlServer>();
+            return vcs;
+        }
+
         protected string GetProjectName()
         {
             var context = VersionControlNavigationHelper.GetTeamFoundationContext(_serviceProvider);

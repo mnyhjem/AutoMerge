@@ -281,6 +281,7 @@
     <Compile Include="Controls\SplitButton.xaml.cs">
       <DependentUpon>SplitButton.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Converters\EscapeMnemonicConverter.cs" />
     <Compile Include="Events\BranchSelectedChangedEvent.cs" />
     <Compile Include="Events\EventAggregatorFactory.cs" />
     <Compile Include="Events\MergeCompleteEvent.cs" />
@@ -308,6 +309,8 @@
     <Compile Include="Prism\Events\SubscriptionToken.cs" />
     <Compile Include="Prism\Events\ThreadOption.cs" />
     <Compile Include="Prism\PropertySupport.cs" />
+    <Compile Include="Prism\SimpleCommand.cs" />
+    <Compile Include="Prism\SimpleDeletegateCommand.cs" />
     <Compile Include="RecentChangesets\ChangesetByIdChangesetProvider.cs" />
     <Compile Include="RecentChangesets\ChangesetCommentConverter.cs" />
     <Compile Include="RecentChangesets\ChangesetProviderBase.cs" />

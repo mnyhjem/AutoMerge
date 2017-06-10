@@ -1,13 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Windows.Input;
 using AutoMerge.Events;
+using AutoMerge.Prism;
 using AutoMerge.Prism.Command;
 using AutoMerge.Prism.Events;
 using Microsoft.TeamFoundation;
 using Microsoft.TeamFoundation.Client;
 using Microsoft.TeamFoundation.Controls;
 using Microsoft.TeamFoundation.Controls.WPF.TeamExplorer;
+using Microsoft.TeamFoundation.VersionControl.Client;
 using Task = System.Threading.Tasks.Task;
 
 using TeamExplorerSectionViewModelBase = AutoMerge.Base.TeamExplorerSectionViewModelBase;
@@ -37,6 +42,21 @@ namespace AutoMerge
             ToggleAddByIdCommand = new DelegateCommand(ToggleAddByIdExecute, ToggleAddByIdCanExecute);
             CancelAddChangesetByIdCommand = new DelegateCommand(CancelAddByIdExecute);
             AddChangesetByIdCommand = new DelegateCommand(AddChangesetByIdExecute, AddChangesetByIdCanExecute);
+
+            SelectSourceBranchCommand = new SimpleDeletegateCommand(ExecuteSelectSourceBranch);
+            SelectTargetBranchCommand = new SimpleDeletegateCommand(ExecuteSelectTargetBranch);
+            SaveDefaultBranchesCommand = new SimpleDeletegateCommand(ExecuteSaveBranches, CanExecuteSaveBranches);
+        }
+
+        private void ExecuteSaveBranches(object obj)
+        {
+            SaveDefaultbranches();
+            _branchesAreDirty = false;
+        }
+
+        private bool CanExecuteSaveBranches(object obj)
+        {
+            return _branchesAreDirty;
         }
 
         public ChangesetViewModel SelectedChangeset
@@ -135,13 +155,18 @@ namespace AutoMerge
 
         protected override async Task RefreshAsync()
         {
+            InitBranchselectors();
+
             Changesets.Clear();
 
             var changesetProvider = new MyChangesetChangesetProvider(ServiceProvider, Settings.Instance.ChangesetCount);
             //var userLogin = VersionControlNavigationHelper.GetAuthorizedUser(ServiceProvider);
 
-            var source = "$/Bookhus husudlejning/Bookhus husudlejning/Feature-Newdesign";
-            var target = "$/Bookhus husudlejning/Bookhus husudlejning/Main_Version7.1";
+            //var source = "$/Bookhus husudlejning/Bookhus husudlejning/Feature-Newdesign";
+            //var target = "$/Bookhus husudlejning/Bookhus husudlejning/Main_Version7.1";
+
+            var source = SourceBranch;
+            var target = TargetBranch;
 
             Logger.Info("Getting changesets ...");
             var changesets = await changesetProvider.GetChangesets(source, target);
@@ -305,6 +330,187 @@ namespace AutoMerge
         protected override void OnContextChanged(object sender, ContextChangedEventArgs e)
         {
             Refresh();
+        }
+
+
+        // branchselectors
+        public ICommand SelectSourceBranchCommand { get; private set; }
+        public ICommand SelectTargetBranchCommand { get; private set; }
+        public ICommand SaveDefaultBranchesCommand { get; private set; }
+        private string _systemDefaultSourceBranch;
+        private string _systemDefaultTargetBranch;
+        private string _sourceBranch;
+        private string _targetBranch;
+        private BranchObject _sourceBranchObject;
+        private BranchObject _targetBranchObject;
+        private List<BranchObject> _sourceBranches, _targetBranches;
+        private bool _branchesAreDirty;
+        private void ExecuteSelectSourceBranch(object branchParam)
+        {
+            BranchObject s = branchParam as BranchObject;
+            SetSourceBranch(s);
+        }
+        private void ExecuteSelectTargetBranch(object branchParam)
+        {
+            BranchObject t = branchParam as BranchObject;
+            SetTargetBranch(t);
+        }
+        public string SourceBranch
+        {
+            get
+            {
+                return _sourceBranch;
+            }
+            set
+            {
+                if (_sourceBranch == value) return;
+                _sourceBranch = value;
+                _branchesAreDirty = _sourceBranch != _systemDefaultSourceBranch;
+                SetTargetBranchProperties(_sourceBranchObject);
+                RaisePropertyChanged("SourceBranch");
+            }
+        }
+
+        public string TargetBranch
+        {
+            get
+            {
+                return _targetBranch;
+            }
+            set
+            {
+                if (_targetBranch == value) return;
+                _targetBranch = value;
+                _branchesAreDirty = _targetBranch != _systemDefaultTargetBranch;
+                RaisePropertyChanged("TargetBranch");
+            }
+        }
+
+        private async void SaveDefaultbranches()
+        {
+            try
+            {
+                if (String.IsNullOrEmpty(SourceBranch) || String.IsNullOrEmpty(TargetBranch)) return;
+
+                Environment.SetEnvironmentVariable("DefaultSourceBranch", SourceBranch, EnvironmentVariableTarget.User);
+                Environment.SetEnvironmentVariable("DefaultTargetBranch", TargetBranch, EnvironmentVariableTarget.User);
+
+                _systemDefaultSourceBranch = SourceBranch;
+                _systemDefaultTargetBranch = TargetBranch;
+
+                await RefreshAsync();
+            }
+            catch (Exception se)
+            {
+                Debug.WriteLine("Cannot save default source and target branch due to a security exception. " + se.ToString());
+            }
+        }
+
+        public List<BranchObject> SourceBranches
+        {
+            get
+            {
+                return _sourceBranches;
+            }
+            set
+            {
+                _sourceBranches = value;
+                RaisePropertyChanged("SourceBranches");
+            }
+        }
+
+        public List<BranchObject> TargetBranches
+        {
+            get
+            {
+                return _targetBranches;
+            }
+            set
+            {
+                _targetBranches = value;
+                RaisePropertyChanged("TargetBranches");
+            }
+        }
+
+        private void InitBranchselectors()
+        {
+            PopulateBranchLists();
+            PopulateFromDefaults();
+        }
+
+        private void PopulateFromDefaults()
+        {
+            _systemDefaultSourceBranch = Environment.GetEnvironmentVariable("DefaultSourceBranch", EnvironmentVariableTarget.User);
+            _systemDefaultTargetBranch = Environment.GetEnvironmentVariable("DefaultTargetBranch", EnvironmentVariableTarget.User);
+
+            if (_systemDefaultSourceBranch == null || _systemDefaultTargetBranch == null || SourceBranches == null || TargetBranches == null) return;
+
+            var sb = SourceBranches.FirstOrDefault(s => s.Properties.RootItem.Item.Equals(_systemDefaultSourceBranch));
+            SetSourceBranch(sb);
+            var tb = TargetBranches.FirstOrDefault(t => t.Properties.RootItem.Item.Equals(_systemDefaultTargetBranch));
+            SetTargetBranch(tb);
+            _branchesAreDirty = sb == null || tb == null;
+        }
+
+        private void SetSourceBranch(BranchObject s)
+        {
+            if (s == null) return;
+            _sourceBranchObject = s;
+            SourceBranch = s.Properties.RootItem.Item;
+        }
+
+        private void SetTargetBranch(BranchObject t)
+        {
+            if (t == null) return;
+            _targetBranchObject = t;
+            TargetBranch = t.Properties.RootItem.Item;
+        }
+
+        private void PopulateBranchLists()
+        {
+            SetSourceBranchProperties();
+            SetTargetBranchProperties(_sourceBranchObject);
+        }
+
+        private void SetSourceBranchProperties()
+        {
+            var changesetProvider = new MyChangesetChangesetProvider(ServiceProvider, Settings.Instance.ChangesetCount);
+            var branches = changesetProvider.GetPossibliBranches();
+
+            if (!branches.Any())
+            {
+                SourceBranches = null;
+                SourceBranch = null;
+                TargetBranch = null;
+                TargetBranches = null;
+                return;
+            }
+
+            SourceBranches = branches;
+            _sourceBranchObject = branches.First();
+            SourceBranch = _sourceBranchObject.Properties.RootItem.Item;
+        }
+        private void SetTargetBranchProperties(BranchObject source)
+        {
+            var changesetProvider = new MyChangesetChangesetProvider(ServiceProvider, Settings.Instance.ChangesetCount);
+
+            List<BranchObject> possibleTargetBranches = new List<BranchObject>();
+            possibleTargetBranches.AddRange(changesetProvider.GetAllBranches(source, false, RecursionType.OneLevel));
+
+            //add parent as target in addition to any child branches
+            if (source.Properties.ParentBranch != null)
+            {
+                possibleTargetBranches.Add(SourceBranches.Single(sb => sb.Properties.RootItem.Equals(source.Properties.ParentBranch))); //can assume using the source list as merging is happen
+            }
+
+            if (!possibleTargetBranches.Any())
+            {
+                TargetBranches = null;
+                TargetBranch = null;
+                return;
+            }
+            TargetBranches = possibleTargetBranches;
+            TargetBranch = possibleTargetBranches.First().Properties.RootItem.Item;
         }
     }
 }

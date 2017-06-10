@@ -8,6 +8,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:teamExplorer="clr-namespace:Microsoft.TeamFoundation.Controls.WPF.TeamExplorer;assembly=Microsoft.TeamFoundation.Controls"
              xmlns:wpf="clr-namespace:Microsoft.TeamFoundation.Controls.WPF;assembly=Microsoft.TeamFoundation.Controls"
+             xmlns:converters1="clr-namespace:AutoMerge.Converters"
              TextOptions.TextFormattingMode="Display"
              UseLayoutRounding="True"
              d:DataContext="{d:DesignInstance autoMerge:RecentChangesetsViewModel}"
@@ -23,6 +24,7 @@
       <autoMerge:ChangesetCommentConverter x:Key="ChangesetCommentConverter" />
       <converters:NonEmptyStringToVisibleConverter x:Key="NonEmptyStringToVisibleConverter" />
       <converters:TrueToVisibleConverter x:Key="TrueToVisibleConverter" />
+      <converters1:EscapeMnemonicConverter x:Key="Converters.EscapeMnemonicConverter" />
 
       <DataTemplate x:Key="ChangesetItemDataTemplate" DataType="autoMerge:ChangesetViewModel">
         <StackPanel Orientation="Horizontal">
@@ -57,51 +59,70 @@
     </ResourceDictionary>
   </UserControl.Resources>
   <StackPanel Margin="6,6,6,6">
-    <WrapPanel Margin="0,0,0,6">
-      <teamExplorer:DropDownLink x:Name="addChangesetByIdLink"
-                                 VerticalAlignment="Center"
-                                 DropDownMenuCommand="{Binding ToggleAddByIdCommand}"
-                                 Localization.Attributes="Text (Modifiable Readable Text)"
-                                 Text="Add By Id"
-                                 ToolTip="Add existing changeset by id" />
-    </WrapPanel>
-    <Border Margin="0,0,0,6"
-            Background="{StaticResource EmbeddedDialogBackgroundBrushKey}"
-            BorderThickness="0"
-            Visibility="{Binding ShowAddByIdChangeset,
-                                 Converter={StaticResource TrueToVisibleConverter}}">
-      <StackPanel Margin="6,6,6,6">
-        <wpf:LabeledTextBox x:Name="changesetIdTextBox"
-                            Margin="0"
-                            AcceptsReturn="False"
-                            HintText="Enter the ID of changeset"
-                            Localization.Attributes="HintText (Modifiable Readable Text)"
-                            Text="{Binding Path=ChangesetIdsText,
-                                           UpdateSourceTrigger=PropertyChanged,
-                                           Mode=TwoWay}">
-          <wpf:LabeledTextBox.InputBindings>
-            <KeyBinding Key="Enter" Command="{Binding AddChangesetByIdCommand}" />
-          </wpf:LabeledTextBox.InputBindings>
-        </wpf:LabeledTextBox>
-        <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
-          <Button MinWidth="75"
-                  MinHeight="23"
-                  Margin="0"
-                  VerticalAlignment="Center"
-                  Command="{Binding AddChangesetByIdCommand}"
-                  Content="Add"
-                  Localization.Attributes="Content (Modifiable Readable Text)"
-                  Padding="6,2,6,2" />
-          <teamExplorer:TextLink Margin="6,0,0,0"
-                                 VerticalAlignment="Center"
-                                 Command="{Binding CancelAddChangesetByIdCommand}"
-                                 Localization.Attributes="Text (Modifiable Readable Text)"
-                                 Text="Cancel"
-                                 x:Uid="cancelLink" />
-        </StackPanel>
-      </StackPanel>
-    </Border>
-    <ListBox x:Name="changesetList"
+    <teamExplorer:DropDownLink x:Name="selectSourcebranch"
+                               VerticalAlignment="Center"
+                               Localization.Attributes="Text (Modifiable Readable Text)"
+                               Text="{Binding Path=SourceBranch}"
+                               ToolTip="Select sourcebranch"
+                               DropDownMenuCommand="{Binding RelativeSource={RelativeSource AncestorType=UserControl, Mode=FindAncestor}, Path=ShowSourceBranchDropDownCommand}"
+    >
+      <teamExplorer:DropDownLink.DropDownMenu>
+        <ContextMenu
+          DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+          ItemsSource="{Binding SourceBranches}" 
+          Placement="Bottom"
+          StaysOpen="False"
+          HasDropShadow="True"
+        >
+          <ContextMenu.ItemTemplate>
+            <DataTemplate>
+              <MenuItem 
+                Header="{Binding Path=Properties.RootItem.Item, Converter={StaticResource Converters.EscapeMnemonicConverter}}" 
+                Command="{Binding DataContext.SelectSourceBranchCommand, RelativeSource={RelativeSource AncestorType=ContextMenu, Mode=FindAncestor}}"
+                CommandParameter="{Binding Path=.}"/>
+            </DataTemplate>
+          </ContextMenu.ItemTemplate>
+        </ContextMenu>
+      </teamExplorer:DropDownLink.DropDownMenu>
+    </teamExplorer:DropDownLink>
+
+      <teamExplorer:DropDownLink x:Name="selectTargetbranch"
+                               VerticalAlignment="Center"
+                               Localization.Attributes="Text (Modifiable Readable Text)"
+                                 Text="{Binding Path=TargetBranch}"
+                               ToolTip="Select targetbranch"
+                                 DropDownMenuCommand="{Binding RelativeSource={RelativeSource AncestorType=UserControl, Mode=FindAncestor}, Path=ShowTargetBranchDropDownCommand}"
+      >
+        <teamExplorer:DropDownLink.DropDownMenu>
+          <ContextMenu
+            DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+            ItemsSource="{Binding TargetBranches}" 
+            Placement="Bottom"
+            StaysOpen="False"
+            HasDropShadow="True"
+          >
+            <ContextMenu.ItemTemplate>
+              <DataTemplate>
+                <MenuItem 
+                  Header="{Binding Path=Properties.RootItem.Item, Converter={StaticResource Converters.EscapeMnemonicConverter}}" 
+                  Command="{Binding DataContext.SelectTargetBranchCommand, RelativeSource={RelativeSource AncestorType=ContextMenu, Mode=FindAncestor}}"
+                  CommandParameter="{Binding Path=.}"/>
+              </DataTemplate>
+            </ContextMenu.ItemTemplate>
+          </ContextMenu>
+        </teamExplorer:DropDownLink.DropDownMenu>
+      </teamExplorer:DropDownLink>
+
+    <teamExplorer:TextLink 
+      x:Uid="saveAsDefault"  
+      x:Name="saveAsDefault" 
+      Margin="12,0,0,0"
+      Text="Save as default branches" 
+      VerticalAlignment="Center"
+      ToolTip="Save source and target branch as the default selection"
+      Command="{Binding SaveDefaultBranchesCommand, Mode=OneWay}" />
+
+      <ListBox x:Name="changesetList"
              Margin="0"
              ItemsSource="{Binding Changesets}"
              SelectedItem="{Binding SelectedChangeset,
